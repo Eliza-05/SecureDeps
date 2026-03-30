@@ -91,6 +91,16 @@ jobs:
           BASE_BRANCH: main
         run: python3 scripts/open_pr.py
 
+      - name: Registrar métricas de detección
+        if: steps.check.outputs.total_fixes != '0'
+        env:
+          METRICS_ACTION: re    gister
+          CHANGES_OUTPUT: remediation-changes.json
+          METRICS_PATH: metrics/security-metrics.json
+          PR_BRANCH: fix/securedeps-auto-remediation-${{ github.run_id }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: python3 scripts/metrics.py
+
       - name: Aviso si GitHub Actions no puede crear PR
         if: steps.check.outputs.total_fixes != '0' && steps.create_pr.outcome == 'failure'
         run: |
