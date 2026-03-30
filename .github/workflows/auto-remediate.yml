@@ -81,13 +81,21 @@ jobs:
         run: sudo apt-get install -y gh
 
       - name: Abrir Pull Request automático
+        id: create_pr
         if: steps.check.outputs.total_fixes != '0'
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CHANGES_OUTPUT: remediation-changes.json
           BASE_BRANCH: main
         run: python3 scripts/open_pr.py
+
+      - name: Aviso si GitHub Actions no puede crear PR
+        if: steps.check.outputs.total_fixes != '0' && steps.create_pr.outcome == 'failure'
+        run: |
+          echo "::warning::No se pudo crear el PR automatico porque la politica del repositorio bloquea pull requests desde GitHub Actions."
+          echo "Habilita la opcion en Settings > Actions > General > Workflow permissions > Allow GitHub Actions to create and approve pull requests."
 
       - name: Resumen del workflow
         if: always()
@@ -102,4 +110,10 @@ jobs:
           for c in data.get('changes', []):
               print(f\"- {c['old']} → {c['new']} ({c['vuln_id']})\")
             " >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.check.outputs.total_fixes }}" != "0" ] && [ "${{ steps.create_pr.outcome }}" = "failure" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### PR automático bloqueado por configuración" >> $GITHUB_STEP_SUMMARY
+            echo "Activa esta opción para permitir PRs desde Actions:" >> $GITHUB_STEP_SUMMARY
+            echo "Settings > Actions > General > Workflow permissions > Allow GitHub Actions to create and approve pull requests" >> $GITHUB_STEP_SUMMARY
           fi
