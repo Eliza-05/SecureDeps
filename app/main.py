@@ -21,7 +21,7 @@ def fetch_url():
 @app.route('/parse-yaml')
 def parse_yaml():
     data = request.args.get('data', 'key: value')
-    parsed = yaml.load(data)  
+    parsed = yaml.load(data)
     return jsonify(parsed)
 
 if __name__ == '__main__':
