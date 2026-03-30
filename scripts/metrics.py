@@ -89,30 +89,35 @@ def register_validation(pr_branch, metrics_path):
 
 
 def print_summary(metrics_path):
-    """Imprime resumen de todas las métricas."""
+    """Imprime resumen de todas las métricas en formato Markdown."""
     metrics = load_existing_metrics(metrics_path)
     records = metrics.get("records", [])
-
-    print(f"\n{'='*50}")
-    print(f"  RESUMEN DE MÉTRICAS SecureDeps")
-    print(f"{'='*50}")
-    print(f"  Total vulnerabilidades registradas: {len(records)}")
 
     open_count = sum(1 for r in records if r.get("status") == "open")
     validated = [r for r in records if r.get("mttr_minutes") is not None]
 
-    print(f"  PRs abiertos (pendientes): {open_count}")
-    print(f"  PRs validados: {len(validated)}")
+    print("##  SecureDeps — Resumen de Métricas\n")
+    print(f"| Métrica | Valor |")
+    print(f"|---------|-------|")
+    print(f"|  Total vulnerabilidades registradas | {len(records)} |")
+    print(f"|  PRs abiertos (pendientes) | {open_count} |")
+    print(f"|  PRs validados | {len(validated)} |")
 
     if validated:
-        avg = round(sum(r["mttr_minutes"] for r in validated) / len(validated), 2)
-        min_mttr = min(r["mttr_minutes"] for r in validated)
-        max_mttr = max(r["mttr_minutes"] for r in validated)
-        print(f"  MTTR promedio: {avg} min")
-        print(f"  MTTR mínimo:   {min_mttr} min")
-        print(f"  MTTR máximo:   {max_mttr} min")
+        avg  = round(sum(r["mttr_minutes"] for r in validated) / len(validated), 2)
+        mini = min(r["mttr_minutes"] for r in validated)
+        maxi = max(r["mttr_minutes"] for r in validated)
+        print(f"|  MTTR promedio | {avg} min |")
+        print(f"|  MTTR mínimo | {mini} min |")
+        print(f"|  MTTR máximo | {maxi} min |")
 
-    print(f"{'='*50}\n")
+    if validated:
+        print("\n### Detalle de vulnerabilidades validadas\n")
+        print("| Paquete | De | A | CVE | Severidad | MTTR |")
+        print("|---------|-----|---|-----|-----------|------|")
+        for r in validated:
+            emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(r.get("severity",""), "⚪")
+            print(f"| {r['package']} | {r['from_version']} | {r['to_version']} | {r['vuln_id']} | {emoji} {r.get('severity','')} | {r['mttr_minutes']} min |")
 
 
 def main():
@@ -137,3 +142,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

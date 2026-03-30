@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureDeps Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header h1 { font-size: 1.4rem; color: #58a6ff; }
+    header span { font-size: 0.85rem; color: #8b949e; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .card .value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+
+    .card .label { font-size: 0.85rem; color: #8b949e; }
+    .card.blue .value  { color: #58a6ff; }
+    .card.green .value { color: #3fb950; }
+    .card.orange .value{ color: #d29922; }
+    .card.purple .value{ color: #bc8cff; }
+
+    .section {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .section h2 {
+      font-size: 1rem;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid #30363d;
+      color: #8b949e;
+      font-weight: 500;
+    }
+
+    td {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid #21262d;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1c2128; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge.critical { background: #3d1a1a; color: #f85149; }
+    .badge.high     { background: #3d2a0a; color: #d29922; }
+    .badge.medium   { background: #1a2d1a; color: #3fb950; }
+    .badge.low      { background: #1a2233; color: #58a6ff; }
+    .badge.open     { background: #1a2d1a; color: #3fb950; }
+    .badge.validated{ background: #1a2233; color: #58a6ff; }
+    .badge.compat   { background: #2d1a2d; color: #bc8cff; }
+
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: #8b949e;
+      font-size: 0.95rem;
+    }
+
+    .mttr-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 6px;
+      background: #21262d;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: #58a6ff;
+      transition: width 0.5s ease;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: #8b949e;
+      font-size: 0.8rem;
+      border-top: 1px solid #30363d;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🔒 SecureDeps Dashboard</h1>
+    <span>Pipeline SCA — Gestión automatizada de vulnerabilidades</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Tarjetas de resumen -->
+  <div class="cards" id="cards">
+    <div class="card blue">
+      <div class="value" id="total">—</div>
+      <div class="label">Total vulnerabilidades</div>
+    </div>
+    <div class="card orange">
+      <div class="value" id="open">—</div>
+      <div class="label">PRs abiertos</div>
+    </div>
+    <div class="card green">
+      <div class="value" id="validated">—</div>
+      <div class="label">PRs validados</div>
+    </div>
+    <div class="card purple">
+      <div class="value" id="mttr">—</div>
+      <div class="label">MTTR promedio (min)</div>
+    </div>
+  </div>
+
+  <!-- Tabla de vulnerabilidades -->
+  <div class="section">
+    <h2>📋 Registro de vulnerabilidades</h2>
+    <div id="table-container">
+      <div class="empty">Cargando datos...</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  SecureDeps · Escuela Colombiana de Ingeniería Julio Garavito ·
+  <span id="updated"></span>
+</footer>
+
+<script>
+  const METRICS_URL = '../metrics/security-metrics.json';
+
+  function severityBadge(s) {
+    const map = {
+      CRITICAL: 'critical', HIGH: 'high',
+      MEDIUM: 'medium', LOW: 'low',
+      COMPATIBILITY: 'compat'
+    };
+    return `<span class="badge ${map[s] || 'low'}">${s || 'N/A'}</span>`;
+  }
+
+  function statusBadge(s) {
+    return `<span class="badge ${s}">${s === 'open' ? '🟡 Abierto' : '✅ Validado'}</span>`;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('es-CO', {
+      dateStyle: 'short', timeStyle: 'short'
+    });
+  }
+
+  function mttrBar(minutes, maxMinutes) {
+    if (!minutes) return '—';
+    const pct = Math.min((minutes / maxMinutes) * 100, 100);
+    return `
+      <div class="mttr-bar">
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pct}%"></div>
+        </div>
+        <span>${minutes} min</span>
+      </div>`;
+  }
+
+  async function loadMetrics() {
+    try {
+      const res = await fetch(METRICS_URL + '?t=' + Date.now());
+      if (!res.ok) throw new Error('No se pudo cargar el archivo de métricas');
+      const data = await res.json();
+      render(data);
+    } catch (e) {
+      document.getElementById('table-container').innerHTML =
+        `<div class="empty">⚠️ No se encontró el archivo de métricas.<br>
+        Ejecuta el pipeline completo para generar datos.</div>`;
+      ['total','open','validated','mttr'].forEach(id =>
+        document.getElementById(id).textContent = '0');
+    }
+  }
+
+  function render(data) {
+    const records = data.records || [];
+    const openRecs = records.filter(r => r.status === 'open');
+    const validRecs = records.filter(r => r.mttr_minutes != null);
+    const avg = validRecs.length
+      ? (validRecs.reduce((s,r) => s + r.mttr_minutes, 0) / validRecs.length).toFixed(1)
+      : '—';
+    const maxMttr = validRecs.length ? Math.max(...validRecs.map(r => r.mttr_minutes)) : 1;
+
+    document.getElementById('total').textContent = records.length;
+    document.getElementById('open').textContent = openRecs.length;
+    document.getElementById('validated').textContent = validRecs.length;
+    document.getElementById('mttr').textContent = avg;
+    document.getElementById('updated').textContent =
+      'Actualizado: ' + new Date().toLocaleString('es-CO');
+
+    if (!records.length) {
+      document.getElementById('table-container').innerHTML =
+        '<div class="empty">Sin registros aún. Ejecuta el pipeline para comenzar.</div>';
+      return;
+    }
+
+    const rows = records.map(r => `
+      <tr>
+        <td><code>${r.package}</code></td>
+        <td>${r.from_version || '—'}</td>
+        <td>${r.to_version || '—'}</td>
+        <td>${r.vuln_id || '—'}</td>
+        <td>${severityBadge(r.severity)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td>${formatDate(r.detected_at)}</td>
+        <td>${mttrBar(r.mttr_minutes, maxMttr)}</td>
+      </tr>`).join('');
+
+    document.getElementById('table-container').innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Paquete</th>
+            <th>Versión anterior</th>
+            <th>Versión segura</th>
+            <th>CVE</th>
+            <th>Severidad</th>
+            <th>Estado</th>
+            <th>Detectado</th>
+            <th>MTTR</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  loadMetrics();
+</script>
+
+</body>
+</html>
