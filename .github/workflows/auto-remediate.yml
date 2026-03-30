@@ -1,0 +1,105 @@
+name: Auto Remediation
+
+on:
+  workflow_run:
+    workflows: ["SCA Security Scan"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: read
+  actions: read
+
+jobs:
+  auto-remediate:
+    name: Auto Remediation (PR Generator)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Descargar reporte Trivy del escaneo anterior
+        uses: actions/download-artifact@v4
+        with:
+          name: trivy-report-${{ github.event.workflow_run.run_number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+        continue-on-error: true
+
+      - name: Generar reporte fresco si no se descargó
+        run: |
+          if [ ! -f "trivy-report.json" ]; then
+            echo "[INFO] Generando reporte Trivy fresco..."
+            sudo apt-get install -y wget apt-transport-https gnupg
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+              gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+            echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
+              sudo tee /etc/apt/sources.list.d/trivy.list
+            sudo apt-get update -qq && sudo apt-get install -y trivy
+            trivy fs ./app \
+              --scanners vuln \
+              --format json \
+              --output trivy-report.json \
+              --exit-code 0
+          fi
+          echo "Reporte listo:"
+          python3 -c "
+          import json
+          data = json.load(open('trivy-report.json'))
+          total = sum(len(r.get('Vulnerabilities') or []) for r in data.get('Results', []))
+          print(f'  Total vulnerabilidades: {total}')
+          "
+
+      - name: Ejecutar script de remediación
+        env:
+          TRIVY_REPORT: trivy-report.json
+          REQUIREMENTS_PATH: app/requirements.txt
+          CHANGES_OUTPUT: remediation-changes.json
+        run: python3 scripts/remediate.py
+
+      - name: Verificar si hay cambios para PR
+        id: check
+        run: |
+          TOTAL=$(python3 -c "import json; print(json.load(open('remediation-changes.json'))['total_fixes'])")
+          echo "total_fixes=$TOTAL" >> $GITHUB_OUTPUT
+          echo "Fixes disponibles: $TOTAL"
+
+      - name: Instalar GitHub CLI
+        if: steps.check.outputs.total_fixes != '0'
+        run: sudo apt-get install -y gh
+
+      - name: Abrir Pull Request automático
+        if: steps.check.outputs.total_fixes != '0'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CHANGES_OUTPUT: remediation-changes.json
+          BASE_BRANCH: main
+        run: python3 scripts/open_pr.py
+
+      - name: Resumen del workflow
+        if: always()
+        run: |
+          echo "##  SecureDeps - Remediación Automática" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f "remediation-changes.json" ]; then
+            python3 -c "
+          import json
+          data = json.load(open('remediation-changes.json'))
+          print(f\"**Fixes aplicados:** {data['total_fixes']}\")
+          for c in data.get('changes', []):
+              print(f\"- {c['old']} → {c['new']} ({c['vuln_id']})\")
+            " >> $GITHUB_STEP_SUMMARY
+          fi
