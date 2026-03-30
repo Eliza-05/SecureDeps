@@ -94,7 +94,7 @@ jobs:
       - name: Registrar métricas de detección
         if: steps.check.outputs.total_fixes != '0'
         env:
-          METRICS_ACTION: re    gister
+          METRICS_ACTION: register
           CHANGES_OUTPUT: remediation-changes.json
           METRICS_PATH: metrics/security-metrics.json
           PR_BRANCH: fix/securedeps-auto-remediation-${{ github.run_id }}

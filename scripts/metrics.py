@@ -116,7 +116,8 @@ def print_summary(metrics_path):
 
 
 def main():
-    action = os.environ.get("METRICS_ACTION", "register")
+    raw_action = os.environ.get("METRICS_ACTION", "register")
+    action = "".join(raw_action.split()).lower()
     changes_path = os.environ.get("CHANGES_OUTPUT", "remediation-changes.json")
     metrics_path = os.environ.get("METRICS_PATH", "metrics/security-metrics.json")
     pr_branch = os.environ.get("PR_BRANCH", "unknown")
