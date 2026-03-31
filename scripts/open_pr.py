@@ -18,7 +18,7 @@ def run(cmd, check=True):
     return result.stdout.strip()
 
 
-def create_pr_body(changes, timestamp):
+def create_pr_body(changes, branch):
     rows = []
     for c in changes:
         old_ver = c["old"].split("==")[-1] if "==" in c["old"] else "N/A"
@@ -29,7 +29,7 @@ def create_pr_body(changes, timestamp):
     table = "\n".join(rows)
     return f"""## 🔒 SecureDeps — Remediación Automática
 
-**Generado:** {timestamp}
+**Rama:** {branch}
 
 ### 📦 Dependencias actualizadas
 
@@ -47,13 +47,13 @@ def create_pr_body(changes, timestamp):
 
 
 def main():
-    changes_path  = os.environ.get("CHANGES_OUTPUT", "remediation-changes.json")
-    github_token  = os.environ.get("GITHUB_TOKEN", "")
-    repo          = os.environ.get("GITHUB_REPOSITORY", "")
-    base_branch   = os.environ.get("BASE_BRANCH", "main")
-    metrics_path  = os.environ.get("METRICS_PATH", "metrics/security-metrics.json")
+    changes_path = os.environ.get("CHANGES_OUTPUT", "remediation-changes.json")
+    github_token = os.environ.get("GITHUB_TOKEN", "")
+    repo         = os.environ.get("GITHUB_REPOSITORY", "")
+    base_branch  = os.environ.get("BASE_BRANCH", "main")
+    metrics_path = os.environ.get("METRICS_PATH", "metrics/security-metrics.json")
+    run_id       = os.environ.get("GITHUB_RUN_ID", datetime.utcnow().strftime("%Y%m%d-%H%M%S"))
 
-    print("\n=== SecureDeps — Apertura de Pull Request ===\n")
 
     with open(changes_path) as f:
         data = json.load(f)
@@ -68,16 +68,14 @@ def main():
     run('git config user.email "securedeps-bot@github.com"')
     run('git config user.name "SecureDeps Bot"')
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    branch = f"fix/securedeps-auto-remediation-{timestamp}"
+    branch = f"fix/securedeps-auto-remediation-{run_id}"
 
-    print(f"[1/4] Creando rama: {branch}")
+    print(f"[1/3] Creando rama: {branch}")
     run(f"git checkout -b {branch}")
 
-    print("[2/4] Haciendo commit...")
+    print("[2/3] Haciendo commit...")
     run("git add app/requirements.txt")
 
-    # Incluir métricas en el commit si existen
     if os.path.exists(metrics_path):
         run(f"git add {metrics_path}")
         print(f"  [INFO] Métricas incluidas en el commit")
@@ -85,14 +83,12 @@ def main():
     pkg_list = ", ".join(c["package"] for c in changes)
     run(f'git commit -m "fix(deps): auto-remediation of {len(changes)} vulnerable dependencies ({pkg_list})"')
 
-    print("[3/4] Push de la rama...")
+    print("[3/3] Push y creación de PR...")
     remote = f"https://x-access-token:{github_token}@github.com/{repo}.git"
     run(f"git remote set-url origin {remote}")
     run(f"git push origin {branch}")
 
-    print("[4/4] Creando Pull Request...")
-    pr_body = create_pr_body(changes, timestamp)
-
+    pr_body = create_pr_body(changes, branch)
     with open("/tmp/pr_body.md", "w") as f:
         f.write(pr_body)
 
@@ -104,11 +100,6 @@ def main():
         f'--base {base_branch} '
         f'--head {branch}'
     )
-
-    branch_file = os.environ.get("GITHUB_OUTPUT", "")
-    if branch_file:
-        with open(branch_file, "a") as f:
-            f.write(f"pr_branch={branch}\n")
 
     print(f"\n PR creado: {pr_url}\n")
 

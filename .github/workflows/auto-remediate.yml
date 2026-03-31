@@ -76,9 +76,15 @@ jobs:
           echo "total_fixes=$TOTAL" >> $GITHUB_OUTPUT
           echo "Fixes disponibles: $TOTAL"
 
-      - name: Instalar GitHub CLI
+      - name: Registrar métricas de detección
         if: steps.check.outputs.total_fixes != '0'
-        run: sudo apt-get install -y gh
+        env:
+          METRICS_ACTION: register
+          CHANGES_OUTPUT: remediation-changes.json
+          METRICS_PATH: metrics/security-metrics.json
+          PR_BRANCH: fix/securedeps-auto-remediation-${{ github.run_id }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: python3 scripts/metrics.py
 
       - name: Abrir Pull Request automático
         id: create_pr
@@ -90,17 +96,8 @@ jobs:
           CHANGES_OUTPUT: remediation-changes.json
           METRICS_PATH: metrics/security-metrics.json
           BASE_BRANCH: develop
-        run: python3 scripts/open_pr.py
-
-      - name: Registrar métricas de detección
-        if: steps.check.outputs.total_fixes != '0' && steps.create_pr.outcome == 'success'
-        env:
-          METRICS_ACTION: register
-          CHANGES_OUTPUT: remediation-changes.json
-          METRICS_PATH: metrics/security-metrics.json
-          PR_BRANCH: ${{ steps.create_pr.outputs.pr_branch }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-        run: python3 scripts/metrics.py
+        run: python3 scripts/open_pr.py
 
       - name: Aviso si GitHub Actions no puede crear PR
         if: steps.check.outputs.total_fixes != '0' && steps.create_pr.outcome == 'failure'
