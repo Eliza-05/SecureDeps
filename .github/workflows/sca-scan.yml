@@ -2,9 +2,9 @@ name: SCA Security Scan
 
 on:
   push:
-    branches: [ main, develop, feature/sca-base-setup ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:

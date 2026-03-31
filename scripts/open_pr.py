@@ -74,7 +74,7 @@ def main():
     run(f"git checkout -b {branch}")
 
     print("[2/3] Haciendo commit...")
-    run("git add app/requirements.txt")
+    run("git add app/")
 
     if os.path.exists(metrics_path):
         run(f"git add {metrics_path}")
