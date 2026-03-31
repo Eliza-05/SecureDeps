@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureDeps — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:         #F4F4FB;
+      --bg-2:       #EEEEF8;
+      --white:      #FFFFFF;
+      --ink:        #0F1035;
+      --ink-soft:   #3D3F6E;
+      --ink-muted:  #8B8DB8;
+      --border:     #DDDDF0;
+      --border-2:   #E8E8F5;
+
+      --violet:     #6B4EFF;
+      --violet-lt:  rgba(107,78,255,0.08);
+      --violet-md:  rgba(107,78,255,0.15);
+      --violet-glow:rgba(107,78,255,0.2);
+
+      --blue:       #3B6EFF;
+      --blue-lt:    rgba(59,110,255,0.08);
+
+      --cyan:       #00A8C8;
+      --cyan-lt:    rgba(0,168,200,0.08);
+
+      --purple:     #9B4EFF;
+      --purple-lt:  rgba(155,78,255,0.08);
+
+      --shadow:     0 1px 3px rgba(15,16,53,.06), 0 4px 20px rgba(15,16,53,.07);
+      --shadow-lg:  0 8px 36px rgba(15,16,53,.12);
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* subtle dot grid */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image: radial-gradient(circle, rgba(107,78,255,0.08) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+    }
+
+    /* top-right glow blob */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -120px; right: -120px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(107,78,255,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(244,244,251,0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2.5rem; height: 68px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .logo { display: flex; align-items: center; gap: 0.75rem; }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--violet) 0%, var(--blue) 100%);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 3px 12px var(--violet-glow);
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 1.15rem; letter-spacing: -0.02em; color: var(--ink);
+    }
+    .logo-text span { color: var(--violet); }
+
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+
+    .live-badge {
+      display: flex; align-items: center; gap: 0.4rem;
+      background: var(--cyan-lt);
+      border: 1px solid rgba(0,168,200,0.2);
+      color: var(--cyan);
+      font-size: 0.75rem; font-weight: 600;
+      padding: 0.3rem 0.8rem; border-radius: 20px;
+    }
+
+    .live-dot {
+      width: 6px; height: 6px; background: var(--cyan);
+      border-radius: 50%; animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.3; transform: scale(0.7); }
+    }
+
+    .last-updated {
+      font-size: 0.75rem; color: var(--ink-muted);
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; overflow: hidden;
+      padding: 4rem 2.5rem 3.5rem;
+      background: linear-gradient(135deg, #1A1560 0%, #231D8F 40%, #2D1AA8 70%, #1E1275 100%);
+      border-bottom: 1px solid rgba(107,78,255,0.2);
+    }
+
+    /* geometric shapes like the slides */
+    .hero-shape-1 {
+      position: absolute; top: -60px; right: -60px;
+      width: 360px; height: 360px;
+      background: linear-gradient(135deg, rgba(107,78,255,0.3), rgba(59,110,255,0.15));
+      border-radius: 40px; transform: rotate(18deg);
+      pointer-events: none;
+    }
+
+    .hero-shape-2 {
+      position: absolute; bottom: -80px; right: 180px;
+      width: 220px; height: 220px;
+      background: linear-gradient(135deg, rgba(155,78,255,0.25), rgba(107,78,255,0.1));
+      border-radius: 28px; transform: rotate(18deg);
+      pointer-events: none;
+    }
+
+    .hero-inner { max-width: 1100px; margin: 0 auto; position: relative; z-index: 1; }
+
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.75);
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.3rem 0.85rem; border-radius: 20px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      letter-spacing: -0.03em; line-height: 1.1;
+      margin-bottom: 0.75rem; color: #fff;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, #A78BFF 0%, #C4B5FD 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.95rem; font-weight: 300;
+      max-width: 520px; line-height: 1.7;
+    }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 1100px; margin: 0 auto;
+      padding: 2.5rem 2.5rem 4rem;
+      position: relative; z-index: 1;
+    }
+
+    /* ── KPI CARDS ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem; margin-bottom: 2rem;
+    }
+
+    @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+    .kpi {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem 1.5rem 1.25rem;
+      box-shadow: var(--shadow);
+      position: relative; overflow: hidden;
+      transition: transform .2s ease, box-shadow .2s ease;
+      animation: fadeUp .5s ease both;
+    }
+
+    .kpi:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .kpi:nth-child(1) { animation-delay: .05s; }
+    .kpi:nth-child(2) { animation-delay: .10s; }
+    .kpi:nth-child(3) { animation-delay: .15s; }
+    .kpi:nth-child(4) { animation-delay: .20s; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* top line accent */
+    .kpi::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px; border-radius: 16px 16px 0 0;
+    }
+
+    .kpi.violet::after { background: linear-gradient(90deg, var(--violet), var(--purple)); }
+    .kpi.blue::after   { background: linear-gradient(90deg, var(--blue), var(--violet)); }
+    .kpi.cyan::after   { background: linear-gradient(90deg, var(--cyan), var(--blue)); }
+    .kpi.purple::after { background: linear-gradient(90deg, var(--purple), var(--violet)); }
+
+    .kpi-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .kpi.violet .kpi-icon { background: var(--violet-lt); }
+    .kpi.blue   .kpi-icon { background: var(--blue-lt); }
+    .kpi.cyan   .kpi-icon { background: var(--cyan-lt); }
+    .kpi.purple .kpi-icon { background: var(--purple-lt); }
+
+    .kpi-value {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 2.4rem; letter-spacing: -0.04em;
+      line-height: 1; margin-bottom: 0.3rem;
+    }
+
+    .kpi.violet .kpi-value { color: var(--violet); }
+    .kpi.blue   .kpi-value { color: var(--blue); }
+    .kpi.cyan   .kpi-value { color: var(--cyan); }
+    .kpi.purple .kpi-value { color: var(--purple); }
+
+    .kpi-label { font-size: 0.8rem; color: var(--ink-muted); font-weight: 400; }
+
+    /* ── SECTION ── */
+    .section {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      box-shadow: var(--shadow);
+      animation: fadeUp .5s ease .25s both;
+    }
+
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border-2);
+      background: var(--bg-2);
+    }
+
+    .section-title {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;
+      color: var(--ink);
+    }
+
+    .section-count {
+      background: var(--violet-lt);
+      border: 1px solid rgba(107,78,255,0.15);
+      color: var(--violet);
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.15rem 0.6rem; border-radius: 20px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+
+    thead th {
+      background: var(--bg-2);
+      padding: 0.75rem 1.25rem;
+      text-align: left; font-size: 0.7rem; font-weight: 600;
+      color: var(--ink-muted); text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border-2);
+      vertical-align: middle; color: var(--ink);
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background .15s ease; }
+    tbody tr:hover td { background: var(--bg); }
+
+    .pkg-name {
+      font-family: 'DM Mono', monospace; font-size: 0.82rem;
+      font-weight: 500; color: var(--violet);
+      background: var(--violet-lt);
+      border: 1px solid rgba(107,78,255,0.15);
+      padding: 0.2rem 0.55rem; border-radius: 6px;
+      display: inline-block;
+    }
+
+    .version { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--ink-muted); }
+    .version.new { color: var(--cyan); font-weight: 500; }
+    .arrow { color: var(--ink-muted); font-size: 0.75rem; margin: 0 0.3rem; }
+
+    .cve-id {
+      font-family: 'DM Mono', monospace; font-size: 0.78rem;
+      color: var(--blue); font-weight: 500;
+    }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.25rem 0.65rem; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.02em; white-space: nowrap;
+    }
+
+    .badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+    .badge.critical { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+    .badge.critical .badge-dot { background: #B91C1C; }
+    .badge.high     { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+    .badge.high .badge-dot { background: #D97706; }
+    .badge.medium   { background: #FEF9C3; color: #713F12; border: 1px solid #FEF08A; }
+    .badge.medium .badge-dot { background: #CA8A04; }
+    .badge.low      { background: var(--blue-lt); color: var(--blue); border: 1px solid rgba(59,110,255,0.2); }
+    .badge.low .badge-dot { background: var(--blue); }
+    .badge.compat   { background: var(--purple-lt); color: var(--purple); border: 1px solid rgba(155,78,255,0.2); }
+    .badge.compat .badge-dot { background: var(--purple); }
+
+    .badge.open {
+      background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A;
+    }
+    .badge.validated {
+      background: var(--cyan-lt); color: var(--cyan); border: 1px solid rgba(0,168,200,0.2);
+    }
+
+    /* ── MTTR BAR ── */
+    .mttr-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 120px; }
+
+    .bar-track {
+      flex: 1; height: 5px;
+      background: var(--bg-2); border-radius: 99px; overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--violet) 0%, var(--cyan) 100%);
+      transition: width 1s cubic-bezier(.4,0,.2,1);
+    }
+
+    .mttr-value {
+      font-family: 'DM Mono', monospace; font-size: 0.78rem;
+      color: var(--violet); font-weight: 500; white-space: nowrap;
+    }
+
+    .date-text {
+      font-size: 0.78rem; color: var(--ink-muted);
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 5rem 2rem; gap: 1rem;
+    }
+
+    .empty-icon {
+      width: 64px; height: 64px;
+      background: var(--violet-lt);
+      border: 1px solid rgba(107,78,255,0.15);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .empty-title {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 1rem; color: var(--ink);
+    }
+
+    .empty-sub {
+      font-size: 0.85rem; color: var(--ink-muted);
+      text-align: center; max-width: 320px; line-height: 1.6;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 2.5rem;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap; gap: 0.5rem;
+      position: relative; z-index: 1;
+      background: var(--white);
+    }
+
+    .footer-left { font-size: 0.78rem; color: var(--ink-muted); }
+    .footer-left strong { color: var(--ink-soft); font-weight: 600; }
+
+    .footer-right {
+      font-size: 0.72rem; color: var(--ink-muted);
+      font-family: 'DM Mono', monospace;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+
+    .footer-right::before {
+      content: ''; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--cyan);
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    <span class="logo-text">Secure<span>Deps</span></span>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      Pipeline activo
+    </div>
+    <span class="last-updated" id="header-updated">—</span>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-shape-1"></div>
+  <div class="hero-shape-2"></div>
+  <div class="hero-inner">
+    <div class="hero-tag"> Software Composition Analysis Pipeline</div>
+    <h1>Gestión automatizada de<br><em>vulnerabilidades SCA</em></h1>
+    <p>Detecta vulnerabilidades en dependencias de software, genera correcciones automáticas y las valida antes de llegar a producción.</p>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi violet">
+      <div class="kpi-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--violet)">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-label">Vulnerabilidades detectadas</div>
+    </div>
+
+    <div class="kpi blue">
+      <div class="kpi-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--blue)">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="kpi-value" id="kpi-open">—</div>
+      <div class="kpi-label">PRs pendientes</div>
+    </div>
+
+    <div class="kpi cyan">
+      <div class="kpi-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cyan)">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <div class="kpi-value" id="kpi-validated">—</div>
+      <div class="kpi-label">PRs validados</div>
+    </div>
+
+    <div class="kpi purple">
+      <div class="kpi-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--purple)">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <div class="kpi-value" id="kpi-mttr">—</div>
+      <div class="kpi-label">MTTR promedio (min)</div>
+    </div>
+  </div>
+
+  <!-- TABLE SECTION -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--violet)">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        Registro de vulnerabilidades
+        <span class="section-count" id="section-count">0</span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div id="table-container">
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--violet)">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="empty-title">Cargando datos...</div>
+          <div class="empty-sub">Conectando con el pipeline de seguridad</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    <strong>SecureDeps</strong> · Pipeline SCA automatizado
+  </div>
+  <div class="footer-right" id="footer-time">Actualizado ahora</div>
+</footer>
+
+<script>
+  const METRICS_URL = 'https://raw.githubusercontent.com/Eliza-05/SecureDeps/develop/metrics/security-metrics.json';
+
+  const SEV_CLASS = {
+    CRITICAL: 'critical', HIGH: 'high',
+    MEDIUM: 'medium', LOW: 'low', COMPATIBILITY: 'compat'
+  };
+
+  function severityBadge(s) {
+    const cls = SEV_CLASS[s] || 'low';
+    return `<span class="badge ${cls}"><span class="badge-dot"></span>${s || 'N/A'}</span>`;
+  }
+
+  function statusBadge(s) {
+    return s === 'open'
+      ? `<span class="badge open">⏳ Pendiente</span>`
+      : `<span class="badge validated">✓ Validado</span>`;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  function mttrCell(minutes, maxMinutes) {
+    if (minutes == null) return `<span style="color:var(--ink-muted);font-size:.78rem;">—</span>`;
+    const pct = Math.min((minutes / (maxMinutes || 1)) * 100, 100);
+    return `
+      <div class="mttr-cell">
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <span class="mttr-value">${minutes}m</span>
+      </div>`;
+  }
+
+  function animateNumber(el, target) {
+    const isFloat = typeof target === 'number' && !Number.isInteger(target);
+    if (typeof target !== 'number') { el.textContent = target; return; }
+    const dur = 900;
+    const t0 = performance.now();
+    function step(now) {
+      const p = Math.min((now - t0) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const val = target * ease;
+      el.textContent = isFloat ? val.toFixed(1) : Math.round(val);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  async function loadMetrics() {
+    try {
+      const res = await fetch(METRICS_URL + '?t=' + Date.now());
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      render(data);
+    } catch {
+      document.getElementById('table-container').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--violet)">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <div class="empty-title">Sin datos disponibles</div>
+          <div class="empty-sub">Ejecuta el pipeline completo para comenzar a ver métricas aquí.</div>
+        </div>`;
+      ['kpi-total','kpi-open','kpi-validated','kpi-mttr'].forEach(id =>
+        document.getElementById(id).textContent = '0');
+    }
+  }
+
+  function render(data) {
+    const records  = data.records || [];
+    const openRecs = records.filter(r => r.status === 'open');
+    const valRecs  = records.filter(r => r.mttr_minutes != null);
+    const avg      = valRecs.length
+      ? valRecs.reduce((s,r) => s + r.mttr_minutes, 0) / valRecs.length
+      : null;
+    const maxMttr  = valRecs.length ? Math.max(...valRecs.map(r => r.mttr_minutes)) : 1;
+
+    const now = new Date().toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+    document.getElementById('header-updated').textContent = now;
+    document.getElementById('footer-time').textContent = `Actualizado: ${now}`;
+    document.getElementById('section-count').textContent = records.length;
+
+    animateNumber(document.getElementById('kpi-total'),     records.length);
+    animateNumber(document.getElementById('kpi-open'),      openRecs.length);
+    animateNumber(document.getElementById('kpi-validated'), valRecs.length);
+
+    const mttrEl = document.getElementById('kpi-mttr');
+    avg != null ? animateNumber(mttrEl, parseFloat(avg.toFixed(1))) : (mttrEl.textContent = '—');
+
+    if (!records.length) {
+      document.getElementById('table-container').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--violet)">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div class="empty-title">Sin vulnerabilidades registradas</div>
+          <div class="empty-sub">El pipeline aún no ha generado registros. Ejecuta un escaneo para comenzar.</div>
+        </div>`;
+      return;
+    }
+
+    const rows = records.map(r => {
+      const oldV = r.from_version?.split('==')[1] || r.from_version || '—';
+      const newV = r.to_version?.split('==')[1]   || r.to_version   || '—';
+      return `
+        <tr>
+          <td><span class="pkg-name">${r.package || '—'}</span></td>
+          <td>
+            <span class="version">${oldV}</span>
+            <span class="arrow">→</span>
+            <span class="version new">${newV}</span>
+          </td>
+          <td><span class="cve-id">${r.vuln_id || '—'}</span></td>
+          <td>${severityBadge(r.severity)}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td><span class="date-text">${formatDate(r.detected_at)}</span></td>
+          <td>${mttrCell(r.mttr_minutes, maxMttr)}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('table-container').innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Paquete</th>
+            <th>Versión</th>
+            <th>CVE</th>
+            <th>Severidad</th>
+            <th>Estado</th>
+            <th>Detectado</th>
+            <th>MTTR</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  loadMetrics();
+</script>
+
+</body>
+</html>

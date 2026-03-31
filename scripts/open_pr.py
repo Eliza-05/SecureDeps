@@ -51,6 +51,7 @@ def main():
     github_token  = os.environ.get("GITHUB_TOKEN", "")
     repo          = os.environ.get("GITHUB_REPOSITORY", "")
     base_branch   = os.environ.get("BASE_BRANCH", "main")
+    metrics_path  = os.environ.get("METRICS_PATH", "metrics/security-metrics.json")
 
     print("\n=== SecureDeps — Apertura de Pull Request ===\n")
 
@@ -76,6 +77,11 @@ def main():
     print("[2/4] Haciendo commit...")
     run("git add app/requirements.txt")
 
+    # Incluir métricas en el commit si existen
+    if os.path.exists(metrics_path):
+        run(f"git add {metrics_path}")
+        print(f"  [INFO] Métricas incluidas en el commit")
+
     pkg_list = ", ".join(c["package"] for c in changes)
     run(f'git commit -m "fix(deps): auto-remediation of {len(changes)} vulnerable dependencies ({pkg_list})"')
 
@@ -99,7 +105,8 @@ def main():
         f'--head {branch}'
     )
 
-    print(f"\n✅ PR creado: {pr_url}\n")
+    print(f"\n PR creado: {pr_url}\n")
+    print(f"::set-output name=branch::{branch}")
 
 
 if __name__ == "__main__":

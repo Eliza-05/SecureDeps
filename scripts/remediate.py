@@ -7,7 +7,68 @@ import json
 import sys
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _parse_version_tuple(version):
+    parts = []
+    for token in re.findall(r"\d+", version):
+        parts.append(int(token))
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts[:3])
+
+
+def _extract_pinned_versions(lines):
+    pinned = {}
+    for line in lines:
+        m = re.match(r"^\s*([a-zA-Z0-9_\-]+)\s*==\s*([^\s#]+)", line)
+        if m:
+            pinned[m.group(1).lower()] = m.group(2)
+    return pinned
+
+
+def _enforce_flask_werkzeug_compatibility(updated_lines, changes):
+    """Ensure Flask/Werkzeug pins remain installable after remediation."""
+    pinned = _extract_pinned_versions(updated_lines)
+    flask_v = pinned.get("flask")
+    werkzeug_v = pinned.get("werkzeug")
+
+    if not flask_v or not werkzeug_v:
+        return updated_lines, changes
+
+    flask_t = _parse_version_tuple(flask_v)
+    werk_t = _parse_version_tuple(werkzeug_v)
+
+    required_werkzeug = None
+    if flask_t >= (2, 3, 0) and flask_t < (3, 0, 0):
+        required_werkzeug = "2.3.3"
+    elif flask_t >= (3, 0, 0):
+        required_werkzeug = "3.0.0"
+
+    if not required_werkzeug:
+        return updated_lines, changes
+
+    req_t = _parse_version_tuple(required_werkzeug)
+    if werk_t >= req_t:
+        return updated_lines, changes
+
+    normalized = []
+    for line in updated_lines:
+        if re.match(r"^\s*werkzeug\s*[=<>!]", line, re.IGNORECASE):
+            normalized.append(f"werkzeug=={required_werkzeug}\n")
+        else:
+            normalized.append(line)
+
+    changes.append({
+        "package": "werkzeug",
+        "old": f"werkzeug=={werkzeug_v}",
+        "new": f"werkzeug=={required_werkzeug}",
+        "severity": "COMPATIBILITY",
+        "vuln_id": "FLASK_WERKZEUG_COMPAT"
+    })
+    print(f"  [COMPAT] werkzeug=={werkzeug_v} ajustado a werkzeug=={required_werkzeug} por compatibilidad con Flask {flask_v}")
+    return normalized, changes
 
 
 def load_trivy_report(path):
@@ -74,6 +135,8 @@ def update_requirements(req_path, fixes):
         else:
             updated.append(line)
 
+    updated, changes = _enforce_flask_werkzeug_compatibility(updated, changes)
+
     with open(req_path, "w") as f:
         f.writelines(updated)
 
@@ -100,14 +163,14 @@ def main():
     if not fixes:
         print("\n[INFO] No hay fixes disponibles. Nada que remediar.")
         with open(changes_out, "w") as f:
-            json.dump({"timestamp": datetime.utcnow().isoformat()+"Z", "total_fixes": 0, "changes": []}, f, indent=2)
+            json.dump({"timestamp": datetime.now(timezone.utc).isoformat(), "total_fixes": 0, "changes": []}, f, indent=2)
         sys.exit(0)
 
     print(f"\n[3/3] Actualizando {requirements}:")
     changes = update_requirements(requirements, fixes)
 
     report_data = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "total_fixes": len(changes),
         "changes": changes
     }

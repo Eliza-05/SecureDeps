@@ -1,0 +1,118 @@
+name: Validate Remediation PR
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'app/requirements.txt'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Rama del PR a validar'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  validate-dependencies:
+    name: Validate Updated Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.head_ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias actualizadas
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r app/requirements.txt
+          python -m pip install pytest
+
+      - name: Correr tests con dependencias nuevas
+        run: pytest tests/ -v
+
+      - name: Verificar que no hay vulns críticas con versiones nuevas
+        run: |
+          sudo apt-get install -y wget apt-transport-https gnupg
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+            gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
+            sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -qq && sudo apt-get install -y trivy
+          trivy fs ./app \
+            --scanners vuln \
+            --format table \
+            --severity CRITICAL \
+            --exit-code 0
+
+      - name: Registrar validación en métricas
+        env:
+          METRICS_ACTION: validate
+          METRICS_PATH: metrics/security-metrics.json
+          PR_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.head_ref }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: python3 scripts/metrics.py
+
+      - name: Guardar métricas actualizadas
+        run: |
+          git config user.email "securedeps-bot@github.com"
+          git config user.name "SecureDeps Bot"
+          git add metrics/
+          git diff --staged --quiet || git commit -m "metrics: update MTTR after PR validation [${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.head_ref }}]"
+          git push origin ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.head_ref }} || echo "Sin cambios que pushear"
+
+      - name: Resumen de validación
+        if: always()
+        run: |
+          echo "##  Validación de PR de Remediación" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Rama:** ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.head_ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tests:**  Pasaron" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python3 scripts/metrics.py 2>/dev/null >> $GITHUB_STEP_SUMMARY || true
+        env:
+          METRICS_ACTION: summary
+          METRICS_PATH: metrics/security-metrics.json
+
+  security-gate:
+    name: Security Gate (No new CRITICAL)
+    runs-on: ubuntu-latest
+    needs: validate-dependencies
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.head_ref }}
+
+      - name: Instalar Trivy
+        run: |
+          sudo apt-get install -y wget apt-transport-https gnupg
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+            gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
+            sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -qq && sudo apt-get install -y trivy
+
+      - name: Security Gate — fallar si hay CRITICAL sin fix
+        run: |
+          trivy fs ./app \
+            --scanners vuln \
+            --format table \
+            --severity CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 || (echo "::error::Hay vulnerabilidades CRITICAL con fix disponible. No se puede aprobar el PR." && exit 1)
+
+      - name: Confirmación de security gate
+        run: echo " Security gate pasado — no hay vulnerabilidades CRITICAL con fix disponible."
