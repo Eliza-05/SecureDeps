@@ -127,8 +127,6 @@ def main():
     metrics_path = os.environ.get("METRICS_PATH", "metrics/security-metrics.json")
     pr_branch = os.environ.get("PR_BRANCH", "unknown")
 
-    print(f"\n=== SecureDeps — Métricas ({action}) ===\n")
-
     if action == "register":
         register_detection(changes_path, metrics_path)
     elif action == "validate":

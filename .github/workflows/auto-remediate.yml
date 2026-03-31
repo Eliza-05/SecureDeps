@@ -99,7 +99,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           CHANGES_OUTPUT: remediation-changes.json
           METRICS_PATH: metrics/security-metrics.json
-          BASE_BRANCH: main
+          BASE_BRANCH: develop
         run: python3 scripts/open_pr.py
 
       - name: Aviso si GitHub Actions no puede crear PR
