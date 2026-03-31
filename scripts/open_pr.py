@@ -105,8 +105,12 @@ def main():
         f'--head {branch}'
     )
 
+    branch_file = os.environ.get("GITHUB_OUTPUT", "")
+    if branch_file:
+        with open(branch_file, "a") as f:
+            f.write(f"pr_branch={branch}\n")
+
     print(f"\n PR creado: {pr_url}\n")
-    print(f"::set-output name=branch::{branch}")
 
 
 if __name__ == "__main__":
