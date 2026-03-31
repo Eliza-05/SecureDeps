@@ -2,9 +2,11 @@ name: Validate Remediation PR
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
     paths:
       - 'app/requirements.txt'
+      - 'app/package.json'
+      - 'app/pom.xml'
   workflow_dispatch:
     inputs:
       branch:

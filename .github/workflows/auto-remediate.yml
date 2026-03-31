@@ -65,7 +65,7 @@ jobs:
       - name: Ejecutar script de remediación
         env:
           TRIVY_REPORT: trivy-report.json
-          REQUIREMENTS_PATH: app/requirements.txt
+          REQUIREMENTS_PATH: app
           CHANGES_OUTPUT: remediation-changes.json
         run: python3 scripts/remediate.py
 
@@ -124,4 +124,4 @@ jobs:
             echo "### PR automático bloqueado por configuración" >> $GITHUB_STEP_SUMMARY
             echo "Activa esta opción para permitir PRs desde Actions:" >> $GITHUB_STEP_SUMMARY
             echo "Settings > Actions > General > Workflow permissions > Allow GitHub Actions to create and approve pull requests" >> $GITHUB_STEP_SUMMARY
-          fi
+          fi    

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-remediate.py - Lee trivy-report.json y actualiza requirements.txt
+remediate.py - Lee trivy-report.json y actualiza el archivo de dependencias
+Soporta: Python (requirements.txt), Node.js (package.json), Java (pom.xml)
 """
 
 import json
@@ -9,6 +10,8 @@ import os
 import re
 from datetime import datetime, timezone
 
+
+# ── UTILIDADES PYTHON ──────────────────────────────────────────────
 
 def _parse_version_tuple(version):
     parts = []
@@ -29,7 +32,7 @@ def _extract_pinned_versions(lines):
 
 
 def _enforce_flask_werkzeug_compatibility(updated_lines, changes):
-    """Ensure Flask/Werkzeug pins remain installable after remediation."""
+    """Asegura compatibilidad entre Flask y Werkzeug después de la remediación."""
     pinned = _extract_pinned_versions(updated_lines)
     flask_v = pinned.get("flask")
     werkzeug_v = pinned.get("werkzeug")
@@ -67,14 +70,27 @@ def _enforce_flask_werkzeug_compatibility(updated_lines, changes):
         "severity": "COMPATIBILITY",
         "vuln_id": "FLASK_WERKZEUG_COMPAT"
     })
-    print(f"  [COMPAT] werkzeug=={werkzeug_v} ajustado a werkzeug=={required_werkzeug} por compatibilidad con Flask {flask_v}")
+    print(f"  [COMPAT] werkzeug=={werkzeug_v} → werkzeug=={required_werkzeug} (compatibilidad Flask {flask_v})")
     return normalized, changes
 
 
-def load_trivy_report(path):
-    with open(path, "r") as f:
-        return json.load(f)
+# ── DETECCIÓN DE LENGUAJE ──────────────────────────────────────────
 
+def detect_package_file(app_path):
+    """Detecta automáticamente el archivo de dependencias del proyecto."""
+    candidates = [
+        (os.path.join(app_path, "requirements.txt"), "python"),
+        (os.path.join(app_path, "package.json"),     "node"),
+        (os.path.join(app_path, "pom.xml"),          "java"),
+    ]
+    for path, lang in candidates:
+        if os.path.exists(path):
+            print(f"  [DETECTADO] Lenguaje: {lang.upper()} → {path}")
+            return path, lang
+    return None, None
+
+
+# ── EXTRACCIÓN DE FIXES ────────────────────────────────────────────
 
 def extract_fixes(report):
     fixes = {}
@@ -99,7 +115,9 @@ def extract_fixes(report):
     return fixes
 
 
-def update_requirements(req_path, fixes):
+# ── PYTHON: requirements.txt ───────────────────────────────────────
+
+def update_requirements_txt(req_path, fixes):
     with open(req_path, "r") as f:
         lines = f.readlines()
 
@@ -143,10 +161,83 @@ def update_requirements(req_path, fixes):
     return changes
 
 
+# ── NODE.JS: package.json ──────────────────────────────────────────
+
+def update_package_json(pkg_path, fixes):
+    with open(pkg_path, "r") as f:
+        data = json.load(f)
+
+    changes = []
+    dep_sections = ["dependencies", "devDependencies", "peerDependencies"]
+
+    for section in dep_sections:
+        if section not in data:
+            continue
+        for pkg_name, current_version in list(data[section].items()):
+            pkg_lower = pkg_name.lower()
+            if pkg_lower in fixes:
+                fix = fixes[pkg_lower]
+                new_version = f"^{fix['fixed_version']}"
+                old_str = f"{pkg_name}@{current_version}"
+                new_str = f"{pkg_name}@{new_version}"
+                data[section][pkg_name] = new_version
+                changes.append({
+                    "package": pkg_name,
+                    "old": old_str,
+                    "new": new_str,
+                    "severity": fix["severity"],
+                    "vuln_id": fix["vuln_id"]
+                })
+                print(f"  [ACTUALIZADO] {old_str} → {new_str}")
+
+    with open(pkg_path, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+
+    return changes
+
+
+# ── JAVA: pom.xml ──────────────────────────────────────────────────
+
+def update_pom_xml(pom_path, fixes):
+    with open(pom_path, "r") as f:
+        content = f.read()
+
+    changes = []
+
+    for pkg_name, fix in fixes.items():
+        pattern = rf'(<artifactId>{re.escape(pkg_name)}</artifactId>\s*<version>)([^<]+)(</version>)'
+        match = re.search(pattern, content, re.IGNORECASE)
+        if match:
+            old_version = match.group(2).strip()
+            new_version = fix["fixed_version"]
+            if old_version != new_version:
+                content = (
+                    content[:match.start(2)]
+                    + new_version
+                    + content[match.end(2):]
+                )
+                changes.append({
+                    "package": pkg_name,
+                    "old": f"{pkg_name}=={old_version}",
+                    "new": f"{pkg_name}=={new_version}",
+                    "severity": fix["severity"],
+                    "vuln_id": fix["vuln_id"]
+                })
+                print(f"  [ACTUALIZADO] {pkg_name} {old_version} → {new_version}")
+
+    with open(pom_path, "w") as f:
+        f.write(content)
+
+    return changes
+
+
+# ── MAIN ───────────────────────────────────────────────────────────
+
 def main():
-    trivy_report  = os.environ.get("TRIVY_REPORT", "trivy-report.json")
-    requirements  = os.environ.get("REQUIREMENTS_PATH", "app/requirements.txt")
-    changes_out   = os.environ.get("CHANGES_OUTPUT", "remediation-changes.json")
+    trivy_report = os.environ.get("TRIVY_REPORT", "trivy-report.json")
+    app_path     = os.environ.get("APP_PATH", "app")
+    changes_out  = os.environ.get("CHANGES_OUTPUT", "remediation-changes.json")
 
     print("\n=== SecureDeps — Script de Remediación ===\n")
 
@@ -154,30 +245,53 @@ def main():
         print(f"[ERROR] No se encontró el reporte: {trivy_report}")
         sys.exit(1)
 
-    print(f"[1/3] Leyendo reporte: {trivy_report}")
-    report = load_trivy_report(trivy_report)
+    print(f"[1/4] Detectando lenguaje en: {app_path}")
+    pkg_file, lang = detect_package_file(app_path)
 
-    print("\n[2/3] Buscando fixes disponibles:")
+    if not pkg_file:
+        print(f"[ERROR] No se encontró requirements.txt, package.json ni pom.xml en {app_path}")
+        sys.exit(1)
+
+    print(f"\n[2/4] Leyendo reporte: {trivy_report}")
+    with open(trivy_report) as f:
+        report = json.load(f)
+
+    print("\n[3/4] Buscando fixes disponibles:")
     fixes = extract_fixes(report)
 
     if not fixes:
         print("\n[INFO] No hay fixes disponibles. Nada que remediar.")
         with open(changes_out, "w") as f:
-            json.dump({"timestamp": datetime.now(timezone.utc).isoformat(), "total_fixes": 0, "changes": []}, f, indent=2)
+            json.dump({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "total_fixes": 0,
+                "language": lang,
+                "changes": []
+            }, f, indent=2)
         sys.exit(0)
 
-    print(f"\n[3/3] Actualizando {requirements}:")
-    changes = update_requirements(requirements, fixes)
+    print(f"\n[4/4] Actualizando {pkg_file}:")
+
+    if lang == "python":
+        changes = update_requirements_txt(pkg_file, fixes)
+    elif lang == "node":
+        changes = update_package_json(pkg_file, fixes)
+    elif lang == "java":
+        changes = update_pom_xml(pkg_file, fixes)
+    else:
+        print(f"[ERROR] Lenguaje no soportado: {lang}")
+        sys.exit(1)
 
     report_data = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "total_fixes": len(changes),
+        "language": lang,
         "changes": changes
     }
     with open(changes_out, "w") as f:
         json.dump(report_data, f, indent=2)
 
-    print(f"\n=== Remediación completada: {len(changes)} paquete(s) actualizado(s) ===\n")
+    print(f"\n=== Remediación completada: {len(changes)} paquete(s) actualizado(s) en {lang.upper()} ===\n")
 
 
 if __name__ == "__main__":
