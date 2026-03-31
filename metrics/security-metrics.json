@@ -1,0 +1,56 @@
+{
+  "records": [
+    {
+      "run_id": "23776202280",
+      "pr_branch": "fix/securedeps-auto-remediation-23776202280",
+      "package": "requests",
+      "from_version": "requests==2.25.0",
+      "to_version": "requests==2.32.0",
+      "vuln_id": "CVE-2024-35195",
+      "severity": "MEDIUM",
+      "detected_at": "2026-03-31T01:34:11.309347+00:00",
+      "pr_created_at": "2026-03-31T01:34:11.391238+00:00",
+      "pr_validated_at": null,
+      "status": "open"
+    },
+    {
+      "run_id": "23776202280",
+      "pr_branch": "fix/securedeps-auto-remediation-23776202280",
+      "package": "flask",
+      "from_version": "flask==2.0.0",
+      "to_version": "flask==3.1.3",
+      "vuln_id": "CVE-2026-27205",
+      "severity": "LOW",
+      "detected_at": "2026-03-31T01:34:11.309347+00:00",
+      "pr_created_at": "2026-03-31T01:34:11.391238+00:00",
+      "pr_validated_at": null,
+      "status": "open"
+    },
+    {
+      "run_id": "23776202280",
+      "pr_branch": "fix/securedeps-auto-remediation-23776202280",
+      "package": "werkzeug",
+      "from_version": "werkzeug==2.0.3",
+      "to_version": "werkzeug==3.0.3",
+      "vuln_id": "CVE-2024-34069",
+      "severity": "HIGH",
+      "detected_at": "2026-03-31T01:34:11.309347+00:00",
+      "pr_created_at": "2026-03-31T01:34:11.391238+00:00",
+      "pr_validated_at": null,
+      "status": "open"
+    },
+    {
+      "run_id": "23776202280",
+      "pr_branch": "fix/securedeps-auto-remediation-23776202280",
+      "package": "cryptography",
+      "from_version": "cryptography==3.4.8",
+      "to_version": "cryptography==42.0.0",
+      "vuln_id": "CVE-2023-50782",
+      "severity": "HIGH",
+      "detected_at": "2026-03-31T01:34:11.309347+00:00",
+      "pr_created_at": "2026-03-31T01:34:11.391238+00:00",
+      "pr_validated_at": null,
+      "status": "open"
+    }
+  ]
+}
