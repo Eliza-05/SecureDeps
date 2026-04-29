@@ -2,7 +2,7 @@ name: Validate Remediation PR
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths:
       - 'app/requirements.txt'
       - 'app/package.json'
@@ -33,7 +33,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.11.9'
 
       - name: Instalar dependencias actualizadas
         run: |
@@ -51,7 +51,7 @@ jobs:
             gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
             sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update -qq && sudo apt-get install -y trivy
+          sudo apt-get update -qq && sudo apt-get install -y trivy=0.60.0
           trivy fs ./app \
             --scanners vuln \
             --format table \
@@ -105,7 +105,7 @@ jobs:
             gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
             sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update -qq && sudo apt-get install -y trivy
+          sudo apt-get update -qq && sudo apt-get install -y trivy=0.60.0
 
       - name: Security Gate — fallar si hay CRITICAL sin fix
         run: |

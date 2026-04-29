@@ -7,13 +7,14 @@ import json
 import os
 import sys
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def run(cmd, check=True):
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    """Run a command as a list of arguments (shell=False) to prevent injection."""
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if check and result.returncode != 0:
-        print(f"[ERROR] {cmd}\n{result.stderr}")
+        print(f"[ERROR] {' '.join(cmd)}\n{result.stderr}")
         sys.exit(1)
     return result.stdout.strip()
 
@@ -52,8 +53,7 @@ def main():
     repo         = os.environ.get("GITHUB_REPOSITORY", "")
     base_branch  = os.environ.get("BASE_BRANCH", "main")
     metrics_path = os.environ.get("METRICS_PATH", "metrics/security-metrics.json")
-    run_id       = os.environ.get("GITHUB_RUN_ID", datetime.utcnow().strftime("%Y%m%d-%H%M%S"))
-
+    run_id       = os.environ.get("GITHUB_RUN_ID", datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
 
     with open(changes_path) as f:
         data = json.load(f)
@@ -65,41 +65,42 @@ def main():
 
     print(f"[INFO] Creando PR para {len(changes)} paquete(s)")
 
-    run('git config user.email "securedeps-bot@github.com"')
-    run('git config user.name "SecureDeps Bot"')
+    run(['git', 'config', 'user.email', 'securedeps-bot@github.com'])
+    run(['git', 'config', 'user.name', 'SecureDeps Bot'])
 
     branch = f"fix/securedeps-auto-remediation-{run_id}"
 
     print(f"[1/3] Creando rama: {branch}")
-    run(f"git checkout -b {branch}")
+    run(['git', 'checkout', '-b', branch])
 
     print("[2/3] Haciendo commit...")
-    run("git add app/")
+    run(['git', 'add', 'app/'])
 
     if os.path.exists(metrics_path):
-        run(f"git add {metrics_path}")
-        print(f"  [INFO] Métricas incluidas en el commit")
+        run(['git', 'add', metrics_path])
+        print("  [INFO] Métricas incluidas en el commit")
 
     pkg_list = ", ".join(c["package"] for c in changes)
-    run(f'git commit -m "fix(deps): auto-remediation of {len(changes)} vulnerable dependencies ({pkg_list})"')
+    commit_msg = f"fix(deps): auto-remediation of {len(changes)} vulnerable dependencies ({pkg_list})"
+    run(['git', 'commit', '-m', commit_msg])
 
     print("[3/3] Push y creación de PR...")
     remote = f"https://x-access-token:{github_token}@github.com/{repo}.git"
-    run(f"git remote set-url origin {remote}")
-    run(f"git push origin {branch}")
+    run(['git', 'remote', 'set-url', 'origin', remote])
+    run(['git', 'push', 'origin', branch])
 
     pr_body = create_pr_body(changes, branch)
     with open("/tmp/pr_body.md", "w") as f:
         f.write(pr_body)
 
     title = f"🔒 [SecureDeps] Auto-remediation: {len(changes)} vulnerable dependencies fixed"
-    pr_url = run(
-        f'gh pr create '
-        f'--title "{title}" '
-        f'--body-file /tmp/pr_body.md '
-        f'--base {base_branch} '
-        f'--head {branch}'
-    )
+    pr_url = run([
+        'gh', 'pr', 'create',
+        '--title', title,
+        '--body-file', '/tmp/pr_body.md',
+        '--base', base_branch,
+        '--head', branch
+    ])
 
     print(f"\n PR creado: {pr_url}\n")
 
