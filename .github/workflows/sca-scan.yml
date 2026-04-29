@@ -59,7 +59,7 @@ jobs:
 
       - name: Subir resultados a GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: trivy-results.sarif
 
@@ -69,6 +69,22 @@ jobs:
         with:
           name: trivy-report-${{ github.run_number }}
           path: trivy-report.json
+          retention-days: 30
+
+      - name: Generar SBOM (CycloneDX)
+        run: |
+          trivy fs ./app \
+            --scanners vuln \
+            --format cyclonedx \
+            --output sbom-cyclonedx.json \
+            --exit-code 0
+
+      - name: Subir SBOM como artefacto
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom-${{ github.run_number }}
+          path: sbom-cyclonedx.json
           retention-days: 30
 
       - name: Resumen de vulnerabilidades
@@ -96,7 +112,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.11.9'
 
       - name: Instalar dependencias
         run: |

@@ -2,7 +2,7 @@ name: Validate Remediation PR
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths:
       - 'app/requirements.txt'
       - 'app/package.json'
@@ -33,7 +33,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.11.9'
 
       - name: Instalar dependencias actualizadas
         run: |
