@@ -10,8 +10,9 @@
       "severity": "MEDIUM",
       "detected_at": "2026-04-29T00:30:41.872563+00:00",
       "pr_created_at": "2026-04-29T00:30:41.939747+00:00",
-      "pr_validated_at": null,
-      "status": "open"
+      "pr_validated_at": "2026-04-29T00:35:04.613681+00:00",
+      "status": "validated",
+      "mttr_minutes": 4.38
     },
     {
       "run_id": "25084829092",
@@ -23,8 +24,9 @@
       "severity": "HIGH",
       "detected_at": "2026-04-29T00:30:41.872563+00:00",
       "pr_created_at": "2026-04-29T00:30:41.939747+00:00",
-      "pr_validated_at": null,
-      "status": "open"
+      "pr_validated_at": "2026-04-29T00:35:04.613681+00:00",
+      "status": "validated",
+      "mttr_minutes": 4.38
     },
     {
       "run_id": "25084829092",
@@ -36,8 +38,9 @@
       "severity": "HIGH",
       "detected_at": "2026-04-29T00:30:41.872563+00:00",
       "pr_created_at": "2026-04-29T00:30:41.939747+00:00",
-      "pr_validated_at": null,
-      "status": "open"
+      "pr_validated_at": "2026-04-29T00:35:04.613681+00:00",
+      "status": "validated",
+      "mttr_minutes": 4.38
     },
     {
       "run_id": "25084829092",
@@ -49,8 +52,9 @@
       "severity": "HIGH",
       "detected_at": "2026-04-29T00:30:41.872563+00:00",
       "pr_created_at": "2026-04-29T00:30:41.939747+00:00",
-      "pr_validated_at": null,
-      "status": "open"
+      "pr_validated_at": "2026-04-29T00:35:04.613681+00:00",
+      "status": "validated",
+      "mttr_minutes": 4.38
     },
     {
       "run_id": "25084829092",
@@ -62,8 +66,9 @@
       "severity": "COMPATIBILITY",
       "detected_at": "2026-04-29T00:30:41.872563+00:00",
       "pr_created_at": "2026-04-29T00:30:41.939747+00:00",
-      "pr_validated_at": null,
-      "status": "open"
+      "pr_validated_at": "2026-04-29T00:35:04.613681+00:00",
+      "status": "validated",
+      "mttr_minutes": 4.38
     }
   ]
 }
