@@ -47,7 +47,7 @@ jobs:
               gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
             echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
               sudo tee /etc/apt/sources.list.d/trivy.list
-            sudo apt-get update -qq && sudo apt-get install -y trivy=0.60.0
+            sudo apt-get update -qq && sudo apt-get install -y trivy
             trivy fs ./app \
               --scanners vuln \
               --format json \

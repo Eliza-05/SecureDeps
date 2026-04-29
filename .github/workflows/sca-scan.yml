@@ -32,7 +32,7 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
             sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update -qq
-          sudo apt-get install -y trivy=0.60.0
+          sudo apt-get install -y trivy
 
       - name: Escanear dependencias con Trivy
         run: |
@@ -59,7 +59,7 @@ jobs:
 
       - name: Subir resultados a GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: trivy-results.sarif
 
