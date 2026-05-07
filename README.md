@@ -68,68 +68,8 @@
 
 ### Diagrama de flujo
 
-<!-- DIAGRAMA: exportar de draw.io y guardar como docs/pipeline-flow.png -->
-> 📸 *Diagrama de arquitectura — exportar desde draw.io y reemplazar esta línea con la imagen*
->
-> ![Arquitectura SecureDeps](docs/pipeline-flow.png)
+![Arquitectura SecureDeps](docs/pipeline%20arquitectura.svg)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        RAMA main                                │
-│              (app con dependencias vulnerables)                 │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ push / trigger manual
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│         🔍 WF1: SCA Security Scan  [sca-scan.yml]              │
-│                                                                 │
-│  • Trivy escanea ./app — genera tabla, JSON, SARIF, SBOM       │
-│  • SARIF → GitHub Security tab (Code Scanning)                 │
-│  • SBOM CycloneDX → artefacto de Actions (30 días)             │
-│  • pytest corre los 9 tests de la aplicación                   │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ on: workflow_run (completed)
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│       🤖 WF2: Auto Remediation  [auto-remediate.yml]           │
-│                                                                 │
-│  • remediate.py: detecta lenguaje, actualiza dependencias      │
-│  • metrics.py: registra detected_at y CVE                      │
-│  • open_pr.py: crea rama fix/securedeps-auto-remediation-{id}  │
-│  • gh pr create → PR automático hacia rama develop             │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ on: pull_request (main | develop)
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│       ✅ WF3: Validate Remediation PR  [validate-pr.yml]       │
-│                                                                 │
-│  • Job 1: instala deps actualizadas → pytest → Trivy check     │
-│  • metrics.py: registra pr_validated_at → calcula MTTR         │
-│  • Job 2 (Security Gate): falla con exit-code 1 si hay         │
-│    vulnerabilidades CRITICAL con fix disponible                │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ merge a develop
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              📊 Dashboard  [GitHub Pages]                       │
-│                                                                 │
-│  • fetch(raw.githubusercontent.com/…/metrics.json)             │
-│  • Muestra: CVEs detectados, MTTR promedio, estado de PRs      │
-│  • URL: eliza-05.github.io/SecureDeps/dashboard/               │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**En paralelo — en cada push a `main`:**
-
-```
-🔐 WF4: Secret Detection  [secret-detection.yml]
-   ├── Gitleaks v2        → historial Git completo → SARIF a Security tab
-   └── TruffleHog v3.88.1 → secretos activos (--only-verified)
-
-🔬 WF5: SAST Security Scan  [sast-scan.yml]
-   ├── Bandit             → análisis estático Python → SARIF a Security tab
-   └── Semgrep            → p/python + p/security-audit + p/flask → SARIF
-```
 
 ---
 
@@ -249,10 +189,7 @@ ipaddress.ip_network('fe80::/10'),      # IPv6 link-local
 
 Análisis completo de red y vectores de ataque en [`NETWORK_SECURITY_ANALYSIS.md`](NETWORK_SECURITY_ANALYSIS.md).
 
-<!-- DIAGRAMA: threat model del pipeline — exportar de draw.io y guardar como docs/threat-model.png -->
-> 📸 *Diagrama threat model — exportar desde draw.io*
->
-> ![Threat Model](docs/threat-model.png)
+![Threat Model](docs/Pipeline%20Threat%20model.svg)
 
 | Vector de ataque | Control implementado | Estado |
 |-----------------|---------------------|:------:|
